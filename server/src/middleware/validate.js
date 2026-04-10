@@ -7,8 +7,9 @@ function validate(schema) {
       const errors = result.error.errors.map((e) => ({
         field: e.path.join("."),
         message: e.message,
-      }));
-      return error(res, "Validation failed", 400, errors);
+      }))
+      const firstMessage = errors[0]?.message || "Validation failed"
+      return error(res, firstMessage, 400, errors)
     }
     req.body = result.data;
     next();

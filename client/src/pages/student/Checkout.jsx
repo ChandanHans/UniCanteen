@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
+import { load } from '@cashfreepayments/cashfree-js'
 
 export default function Checkout() {
   const { cart, fetchCart } = useCart()
@@ -18,43 +19,32 @@ export default function Checkout() {
   const [orderData, setOrderData] = useState(null)
   const [verifying, setVerifying] = useState(false)
 
-  function openRazorpay(od) {
-    const options = {
-      key: od.rzpKeyId,
-      amount: od.rzpAmount,
-      currency: 'INR',
-      name: od.canteenName || 'Canteen',
-      description: `Order ${od.order.orderNumber}`,
-      order_id: od.rzpOrderId,
-      prefill: {
-        name: user?.name || '',
-        email: user?.email || '',
-        contact: user?.phone || '',
-      },
-      theme: { color: '#6366f1' },
-      handler: async (response) => {
-        setVerifying(true)
-        try {
-          await api.post(`/orders/${od.order.id}/verify-payment`, {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          })
-          toast.success('Payment successful! Order confirmed.')
-          navigate(`/order/${od.order.id}`)
-        } catch (err) {
-          toast.error(err.response?.data?.message || 'Payment verification failed')
-          setVerifying(false)
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          toast('Payment not completed. Tap "Pay Now" to try again.', { icon: 'ℹ️' })
-        },
-      },
+  async function openCashfree(od) {
+    const cashfree = await load({ mode: import.meta.env.PROD ? 'production' : 'sandbox' })
+    const result = await cashfree.checkout({
+      paymentSessionId: od.paymentSessionId,
+      redirectTarget: '_modal',
+    })
+
+    if (result.error) {
+      toast.error(result.error.message || 'Payment failed')
+      return
     }
-    const rzp = new window.Razorpay(options)
-    rzp.open()
+
+    if (result.paymentDetails) {
+      setVerifying(true)
+      try {
+        await api.post(`/orders/${od.order.id}/verify-payment`, {
+          cf_order_id: od.cfOrderId,
+        })
+        toast.success('Payment successful! Order confirmed.')
+        fetchCart()
+        navigate(`/order/${od.order.id}`)
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Payment verification failed')
+        setVerifying(false)
+      }
+    }
   }
 
   async function handlePlaceOrder() {
@@ -64,9 +54,10 @@ export default function Checkout() {
       const od = data.data
       setOrderData(od)
       fetchCart()
-      openRazorpay(od)
+      openCashfree(od)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create order')
+      fetchCart()
     } finally {
       setLoading(false)
     }
@@ -100,12 +91,12 @@ export default function Checkout() {
             </div>
           ) : (
             <>
-              <button onClick={() => openRazorpay(orderData)}
+              <button onClick={() => openCashfree(orderData)}
                 className="btn-primary w-full text-lg py-3 mb-3">
-                Pay ₹{Number(orderData.order.totalAmount)} via Razorpay
+                Pay ₹{Number(orderData.order.totalAmount)} via UPI
               </button>
               <p className="text-xs text-gray-400 text-center">
-                Supports UPI, cards, netbanking &amp; wallets. Secured by Razorpay.
+                Pay via GPay, PhonePe, Paytm or any UPI app. Powered by Cashfree.
               </p>
             </>
           )}

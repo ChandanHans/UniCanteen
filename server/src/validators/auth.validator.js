@@ -3,9 +3,9 @@ const { z } = require("zod");
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Invalid Indian phone number"),
+  phone: z.string().min(1, "Phone is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  hostelId: z.string().uuid().optional(),
+  hostelId: z.string().uuid("Invalid hostel ID").optional(),
 });
 
 const loginSchema = z.object({
@@ -15,7 +15,7 @@ const loginSchema = z.object({
 
 const updateProfileSchema = z.object({
   name: z.string().min(2).optional(),
-  phone: z.string().regex(/^[6-9]\d{9}$/).optional(),
+  phone: z.string().optional(),
   hostelId: z.string().uuid().optional(),
 });
 

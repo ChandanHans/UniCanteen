@@ -28,7 +28,10 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch {
         localStorage.removeItem('accessToken')
-        window.location.href = '/login'
+        const pub = ['/login', '/register']
+        if (!pub.includes(window.location.pathname)) {
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(error)

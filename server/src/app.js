@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const errorHandler = require("./middleware/errorHandler");
+const { razorpayWebhook } = require("./controllers/payment.controller");
 
 // Route imports
 const authRoutes = require("./routes/auth.routes");
@@ -15,6 +16,13 @@ const notificationRoutes = require("./routes/notification.routes");
 const adminRoutes = require("./routes/admin.routes");
 
 const app = express();
+
+// Webhook must be registered BEFORE express.json() so raw body is preserved
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  razorpayWebhook
+);
 
 // Middleware
 app.use(cors({

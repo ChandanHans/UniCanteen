@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
+import suLogo from '../../assets/images/suniv_logo.png'
 
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', hostelId: '' })
   const [hostels, setHostels] = useState([])
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
-  const navigate = useNavigate()
 
   useEffect(() => {
     api.get('/super-admin/hostels').catch(() =>
@@ -34,7 +34,7 @@ export default function Register() {
       if (!payload.hostelId) delete payload.hostelId
       await register(payload)
       toast.success('Account created!')
-      navigate('/')
+      // PublicRoute automatically redirects once user state is set
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed')
     } finally {
@@ -43,13 +43,21 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-accent-700 px-4 py-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">🍽️ UniCanteen</h1>
-          <p className="text-gray-500 mt-2">Create your account</p>
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-gradient-to-br from-accent-400 to-primary-500 p-1 shadow-2xl">
+              <div className="rounded-full bg-primary-700 p-2">
+                <img src={suLogo} alt="Sambalpur University" className="h-20 w-20 rounded-full object-contain" style={{filter:'brightness(0) invert(1)'}} />
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-white tracking-wide">SU-Canteen</h1>
+          <p className="text-accent-300 text-sm font-medium mt-1">Sambalpur University</p>
+          <p className="text-white/60 mt-2 text-sm">Create your account</p>
         </div>
-        <div className="card p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>

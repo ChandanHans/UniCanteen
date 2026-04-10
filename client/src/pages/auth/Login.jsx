@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
+import suLogo from '../../assets/images/suniv_logo.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -27,13 +28,21 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-accent-700 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">🍽️ UniCanteen</h1>
-          <p className="text-gray-500 mt-2">Sign in to your account</p>
+          <div className="flex justify-center mb-4">
+            <div className="rounded-full bg-gradient-to-br from-accent-400 to-primary-500 p-1 shadow-2xl">
+              <div className="rounded-full bg-primary-700 p-2">
+                <img src={suLogo} alt="Sambalpur University" className="h-20 w-20 rounded-full object-contain" style={{filter:'brightness(0) invert(1)'}} />
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-white tracking-wide">SU-Canteen</h1>
+          <p className="text-accent-300 text-sm font-medium mt-1">Sambalpur University</p>
+          <p className="text-white/60 mt-2 text-sm">Sign in to your account</p>
         </div>
-        <div className="card p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

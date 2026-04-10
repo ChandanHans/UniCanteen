@@ -1,7 +1,7 @@
 const prisma = require("../config/db");
 const { getIO } = require("../config/socket");
 const { success, error } = require("../utils/apiResponse");
-const razorpay = require("../config/razorpay");
+const Cashfree = require("../config/cashfree");
 const crypto = require("crypto");
 
 function generateOrderNumber() {
@@ -48,7 +48,13 @@ async function createOrder(req, res, next) {
       select: { name: true },
     });
 
-    // Step 1: Create order + payment in DB
+    // Fetch user details needed for Cashfree customer object
+    const userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true, phone: true },
+    });
+
+    // Step 1: Create order + payment in DB (do NOT clear cart yet)
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
@@ -73,38 +79,50 @@ async function createOrder(req, res, next) {
         include: { items: true, payment: true },
       });
 
-      await tx.cartItem.deleteMany({ where: { userId } });
       return newOrder;
     });
 
-    // Step 2: Create Razorpay order
-    let rzpOrder;
+    // Step 2: Create Cashfree order
+    let cfOrder;
     try {
-      rzpOrder = await razorpay.orders.create({
-        amount: Math.round(totalAmount * 100), // paise
-        currency: "INR",
-        receipt: order.orderNumber,
-      });
-    } catch (rzpErr) {
-      // Roll back if Razorpay is unavailable
+      const orderRequest = {
+        order_id: order.orderNumber,
+        order_amount: totalAmount,
+        order_currency: "INR",
+        customer_details: {
+          customer_id: userId,
+          customer_name: userRecord.name,
+          customer_email: userRecord.email,
+          customer_phone: userRecord.phone?.replace(/^\+?91/, "").slice(-10) || "9999999999",
+        },
+        order_meta: {
+          return_url: `${process.env.CLIENT_URL}/checkout?cf_order_id=${order.orderNumber}&payment_status={payment_status}`,
+        },
+      };
+      const response = await Cashfree.PGCreateOrder(orderRequest);
+      cfOrder = response.data;
+    } catch (cfErr) {
+      // Delete the pending order so cart stays intact
       await prisma.$transaction([
-        prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } }),
-        prisma.payment.update({ where: { orderId: order.id }, data: { status: "FAILED" } }),
+        prisma.payment.delete({ where: { orderId: order.id } }),
+        prisma.order.delete({ where: { id: order.id } }),
       ]);
       return error(res, "Payment gateway unavailable. Please try again.", 503);
     }
 
-    // Step 3: Store Razorpay order ID
-    await prisma.payment.update({
-      where: { orderId: order.id },
-      data: { rzpOrderId: rzpOrder.id },
-    });
+    // Step 3: Store Cashfree order ID and clear cart atomically
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { orderId: order.id },
+        data: { rzpOrderId: cfOrder.cf_order_id.toString() },
+      }),
+      prisma.cartItem.deleteMany({ where: { userId } }),
+    ]);
 
     return success(res, {
       order,
-      rzpOrderId: rzpOrder.id,
-      rzpKeyId: process.env.RAZORPAY_KEY_ID,
-      rzpAmount: rzpOrder.amount,
+      paymentSessionId: cfOrder.payment_session_id,
+      cfOrderId: cfOrder.cf_order_id,
       canteenName: canteen?.name,
     }, "Order created. Please complete payment.", 201);
   } catch (err) {
@@ -112,13 +130,13 @@ async function createOrder(req, res, next) {
   }
 }
 
-// Student verifies payment after Razorpay modal success
+// Student calls this after Cashfree checkout completes
 async function verifyPayment(req, res, next) {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { cf_order_id } = req.body;
 
     const payment = await prisma.payment.findUnique({
-      where: { rzpOrderId: razorpay_order_id },
+      where: { rzpOrderId: cf_order_id.toString() },
       include: { order: true },
     });
 
@@ -126,21 +144,32 @@ async function verifyPayment(req, res, next) {
     if (payment.order.userId !== req.user.userId) return error(res, "Access denied", 403);
     if (payment.status === "SUCCESS") return error(res, "Payment already verified", 400);
 
-    // Verify HMAC signature
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return error(res, "Invalid payment signature", 400);
+    // Fetch order status from Cashfree
+    let cfOrder;
+    try {
+      const response = await Cashfree.PGFetchOrder(payment.order.orderNumber, undefined, undefined);
+      cfOrder = response.data;
+    } catch (cfErr) {
+      return error(res, "Could not verify payment with gateway", 502);
     }
+
+    if (cfOrder.order_status !== "PAID") {
+      return error(res, `Payment not completed. Status: ${cfOrder.order_status}`, 400);
+    }
+
+    // Get cf_payment_id from payments list
+    let cfPaymentId = null;
+    try {
+      const paymentsRes = await Cashfree.PGOrderFetchPayments(payment.order.orderNumber, undefined, undefined);
+      const paid = paymentsRes.data?.find((p) => p.payment_status === "SUCCESS");
+      cfPaymentId = paid?.cf_payment_id?.toString() || null;
+    } catch {}
 
     // Mark payment SUCCESS + order CONFIRMED
     await prisma.$transaction(async (tx) => {
       await tx.payment.update({
-        where: { rzpOrderId: razorpay_order_id },
-        data: { status: "SUCCESS", rzpPaymentId: razorpay_payment_id },
+        where: { id: payment.id },
+        data: { status: "SUCCESS", rzpPaymentId: cfPaymentId },
       });
       await tx.order.update({
         where: { id: payment.orderId },
