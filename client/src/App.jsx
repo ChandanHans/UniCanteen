@@ -19,7 +19,6 @@ import Profile from './pages/student/Profile'
 import AdminDashboard from './pages/admin/Dashboard'
 import OrderManager from './pages/admin/OrderManager'
 import MenuManager from './pages/admin/MenuManager'
-import AdminSettings from './pages/admin/Settings'
 
 // Super Admin pages
 import SuperAdminDashboard from './pages/superadmin/Dashboard'
@@ -71,7 +70,6 @@ export default function App() {
         <Route path="/admin" element={<ProtectedRoute roles={['CANTEEN_ADMIN']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/orders" element={<ProtectedRoute roles={['CANTEEN_ADMIN']}><OrderManager /></ProtectedRoute>} />
         <Route path="/admin/menu" element={<ProtectedRoute roles={['CANTEEN_ADMIN']}><MenuManager /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute roles={['CANTEEN_ADMIN']}><AdminSettings /></ProtectedRoute>} />
 
         {/* Super Admin routes */}
         <Route path="/super-admin" element={<ProtectedRoute roles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />

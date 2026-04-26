@@ -56,7 +56,6 @@ export default function AdminDashboard() {
       <div className="flex gap-4">
         <Link to="/admin/orders" className="btn-primary">Manage Orders</Link>
         <Link to="/admin/menu" className="btn-secondary">Manage Menu</Link>
-        <Link to="/admin/settings" className="btn-secondary">UPI Settings</Link>
       </div>
     </div>
   )

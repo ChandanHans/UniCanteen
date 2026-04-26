@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { FiShoppingCart, FiMenu, FiX, FiBell, FiLogOut, FiUser, FiSettings } from 'react-icons/fi'
+import { FiShoppingCart, FiMenu, FiX, FiBell, FiLogOut, FiUser } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useSocket } from '../../context/SocketContext'
@@ -81,9 +81,6 @@ export default function Navbar() {
                     <Link to="/admin" className="text-primary-100 hover:text-white transition-colors">Dashboard</Link>
                     <Link to="/admin/orders" className="text-primary-100 hover:text-white transition-colors">Orders</Link>
                     <Link to="/admin/menu" className="text-primary-100 hover:text-white transition-colors">Menu</Link>
-                    <Link to="/admin/settings" className="text-primary-100 hover:text-white transition-colors" title="Settings">
-                      <FiSettings size={20} />
-                    </Link>
                   </>
                 )}
                 {user.role === 'SUPER_ADMIN' && (
@@ -139,7 +136,6 @@ export default function Navbar() {
                     <Link to="/admin" className="block py-2 text-primary-100 hover:text-white" onClick={() => setMenuOpen(false)}>Dashboard</Link>
                     <Link to="/admin/orders" className="block py-2 text-primary-100 hover:text-white" onClick={() => setMenuOpen(false)}>Orders</Link>
                     <Link to="/admin/menu" className="block py-2 text-primary-100 hover:text-white" onClick={() => setMenuOpen(false)}>Menu</Link>
-                    <Link to="/admin/settings" className="block py-2 text-primary-100 hover:text-white" onClick={() => setMenuOpen(false)}>Settings</Link>
                   </>
                 )}
                 {user.role === 'SUPER_ADMIN' && (
